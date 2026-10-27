@@ -14,6 +14,7 @@
         android:id="@+id/dreamContent"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
         android:orientation="vertical">
 
         <LinearLayout
@@ -33,23 +34,11 @@
                 android:letterSpacing="-0.04"
                 android:includeFontPadding="false" />
 
-            <TextClock
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
-                android:format12Hour="a"
-                android:format24Hour=""
-                android:textColor="#99FFFFFF"
-                android:textSize="22sp"
-                android:fontFamily="@string/font_medium"
-                android:letterSpacing="0.08"
-                android:textAllCaps="true" />
         </LinearLayout>
 
         <TextClock
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
             android:layout_marginTop="4dp"
             android:format12Hour="@string/date_format"
             android:format24Hour="@string/date_format"

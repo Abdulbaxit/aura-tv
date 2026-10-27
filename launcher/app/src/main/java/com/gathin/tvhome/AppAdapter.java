@@ -1,6 +1,7 @@
 package com.gathin.tvhome;
 
 import android.app.Activity;
+import android.app.ActivityOptions;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Context;
@@ -78,6 +79,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         int ambient;
         /** uniform_tiles card fill, top and bottom colour; null until sampled from the icon. */
         int[] backdrop;
+        /** Local change for this TV: up to three colours from the logo or banner, most common first. */
+        int[] palette;
 
         Entry(String label, ComponentName component, Drawable banner, Drawable icon) {
             this(APP, label, component, banner, icon, null, 0);
@@ -103,11 +106,18 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
      * Tile width for a grid of this inner width: the cell minus room for the focus zoom and the glass
      * highlight, capped at the design size so 4 columns on a 1080p TV look exactly as before.
      */
+    /**
+     * Local change for this TV (config.xml tile_max_dp, tile_side_room_dp, tile_fit_percent): wider tiles and a
+     * smaller gap between them, still leaving room for the focused tile's zoom and glass. Set by the constructor;
+     * the defaults are the original 180dp, 12dp and 110 %.
+     */
+    static float tileMaxDp = DESIGN_W_DP, tileSideRoomDp = 12f, tileFitScale = FOCUS_SCALE;
+
     static int tileWidthPx(int innerWidthPx, int columns, float density) {
-        int design = Math.round(DESIGN_W_DP * density);
+        int design = Math.round(tileMaxDp * density);
         if (innerWidthPx <= 0 || columns <= 0) return design;
         int cell = innerWidthPx / columns;
-        int fit = (int) ((cell - 12 * density) / FOCUS_SCALE);
+        int fit = (int) ((cell - tileSideRoomDp * density) / tileFitScale);
         return Math.max(Math.round(80 * density), Math.min(design, fit));
     }
 
@@ -218,7 +228,21 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final boolean uniformTiles;
     private final List<Entry> items = new ArrayList<>();
 
+    /** Local change for this TV: every tile a circle (config.xml, round_tiles), set by the adapter's constructor. */
+    static boolean roundTiles;
+    /** Local change for this TV: how much the focused tile zooms (focus_zoom_percent) and rises (hover_lift_dp). */
+    static float focusZoom = 1.12f, hoverLiftDp = 4f;
+    /** Local change for this TV: apps open by zooming out of their tile (config.xml, app_open_zoom). */
+    private final boolean appOpenZoom;
+
     AppAdapter(Context ctx, TileListener listener, int dockSize, Config cfg) {
+        roundTiles = ctx.getResources().getBoolean(R.bool.round_tiles);
+        focusZoom = ctx.getResources().getInteger(R.integer.focus_zoom_percent) / 100f;
+        hoverLiftDp = ctx.getResources().getInteger(R.integer.hover_lift_dp);
+        tileMaxDp = ctx.getResources().getInteger(R.integer.tile_max_dp);
+        tileSideRoomDp = ctx.getResources().getInteger(R.integer.tile_side_room_dp);
+        tileFitScale = ctx.getResources().getInteger(R.integer.tile_fit_percent) / 100f;
+        appOpenZoom = ctx.getResources().getBoolean(R.bool.app_open_zoom);
         this.ctx = ctx;
         this.listener = listener;
         this.dockSize = dockSize;
@@ -402,7 +426,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         int w = tileWidthPx(inner, parent.getHeight(), dockSize, rowsBelowDock, dockTitle, dockRow, density), h = tileHeightPx(w);
         View card = v.findViewById(R.id.card);
         ViewGroup.LayoutParams cardLp = card.getLayoutParams();
-        cardLp.width = w;
+        cardLp.width = roundTiles ? h : w;
         cardLp.height = h;
         card.setLayoutParams(cardLp);
         View name = v.findViewById(R.id.name);
@@ -456,7 +480,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         h.name.setAlpha(focused ? 1f : restNameAlpha);
         h.card.setScaleX(focused && animations ? focusScale() : 1f);
         h.card.setScaleY(focused && animations ? focusScale() : 1f);
-        h.card.setTranslationY(focused && advancedEffects ? -4f * ctx.getResources().getDisplayMetrics().density : 0f);
+        h.card.setTranslationY(focused && advancedEffects ? -hoverLiftDp * ctx.getResources().getDisplayMetrics().density : 0f);
         h.card.setTranslationZ(focused && advancedEffects ? 8f * ctx.getResources().getDisplayMetrics().density : 0f);
         h.banner.setScaleX(focused && advancedEffects ? 1.035f : 1f);
         h.banner.setScaleY(focused && advancedEffects ? 1.035f : 1f);
@@ -480,7 +504,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             h.label.setText(e.label);
             h.label.setVisibility(uniformTiles ? View.GONE : View.VISIBLE);
         }
-        h.card.setOnClickListener(v -> launch(e));
+        h.card.setOnClickListener(v -> launch(e, v));
         h.card.setOnLongClickListener(v -> {
             if (tileMenu) {
                 int pos = h.getBindingAdapterPosition();
@@ -498,7 +522,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
 
     /** Opens the tile's activity by explicit component, with no extras: a card can name nothing else. */
-    private void launch(Entry e) {
+    private void launch(Entry e, View card) {
         if (e.kind == Entry.HOME_SETTINGS) {
             ctx.startActivity(new Intent(ctx, HomeSettingsActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
@@ -518,9 +542,15 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             if (ctx.getPackageManager().resolveActivity(byAction, 0) != null) i = byAction;
         }
         try {
-            ctx.startActivity(i);
+            boolean zoom = appOpenZoom && animations && !reducedMotion && card.getWidth() > 0;
+            if (zoom) {
+                ctx.startActivity(i, ActivityOptions.makeScaleUpAnimation(
+                        card, 0, 0, card.getWidth(), card.getHeight()).toBundle());
+            } else {
+                ctx.startActivity(i);
+            }
             if (cinematic) LastOpened.record(ctx, e.pkg);
-            if (advancedEffects && !reducedMotion && ctx instanceof Activity) {
+            if (!zoom && advancedEffects && !reducedMotion && ctx instanceof Activity) {
                 ((Activity) ctx).overridePendingTransition(R.anim.app_open_enter, R.anim.app_open_exit);
             }
         } catch (Exception ex) {
@@ -642,7 +672,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
 
     float focusScale() {
-        return !animations ? 1f : advancedEffects ? 1.12f : 1.10f;
+        return !animations ? 1f : advancedEffects ? focusZoom : 1.10f;
     }
 
     /** A vivid colour sampled from the app's banner (or icon), cached per entry; a card's accent when it set one. */
@@ -653,6 +683,66 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             e.ambient = uniformTiles && e.banner == null ? dominantColor(e.icon) : vividColor(e.banner != null ? e.banner : e.icon);
         }
         return e.ambient;
+    }
+
+    /** Local change for this TV: the app's own colours for the drifting glow (paletteOf), cached per entry. */
+    int[] paletteAt(int position) {
+        if (position < 0 || position >= items.size()) return new int[]{0xFF444444};
+        Entry e = items.get(position);
+        if (e.palette == null) e.palette = paletteOf(e.banner != null ? e.banner : e.icon, ambientColorAt(position));
+        return e.palette;
+    }
+
+    /**
+     * Up to three distinct colours that cover a real part of the logo or banner, most common first: the
+     * saturated pixels grouped by hue in 30-degree bins, neighbouring bins skipped so one colour is not
+     * counted twice. White, grey and black parts are left out; a logo with no colour gives the fallback alone.
+     */
+    static int[] paletteOf(Drawable live, int fallback) {
+        if (live == null) return new int[]{fallback};
+        Drawable d = live.getConstantState() != null ? live.getConstantState().newDrawable().mutate() : live;
+        Rect saved = new Rect(d.getBounds());
+        int n = 24;
+        Bitmap bmp = Bitmap.createBitmap(n, n, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(bmp);
+        d.setBounds(0, 0, n, n);
+        d.draw(c);
+        d.setBounds(saved);
+        int[] px = new int[n * n];
+        bmp.getPixels(px, 0, n, 0, 0, n, n);
+        bmp.recycle();
+        int bins = 12;
+        int[] count = new int[bins];
+        long[] rs = new long[bins], gs = new long[bins], bs = new long[bins];
+        float[] hsv = new float[3];
+        for (int p : px) {
+            if (Color.alpha(p) < 128) continue;
+            Color.colorToHSV(p, hsv);
+            if (hsv[1] < 0.35f || hsv[2] < 0.3f) continue;
+            int bin = ((int) (hsv[0] / 30f)) % bins;
+            count[bin]++;
+            rs[bin] += Color.red(p);
+            gs[bin] += Color.green(p);
+            bs[bin] += Color.blue(p);
+        }
+        int min = Math.max(4, px.length / 25);
+        boolean[] used = new boolean[bins];
+        List<Integer> out = new ArrayList<>();
+        for (int k = 0; k < 3; k++) {
+            int best = -1;
+            for (int i = 0; i < bins; i++) {
+                if (used[i] || count[i] < min) continue;
+                if (best < 0 || count[i] > count[best]) best = i;
+            }
+            if (best < 0) break;
+            used[best] = used[(best + 1) % bins] = used[(best + bins - 1) % bins] = true;
+            out.add(Color.rgb((int) (rs[best] / count[best]), (int) (gs[best] / count[best]),
+                    (int) (bs[best] / count[best])));
+        }
+        if (out.isEmpty()) return new int[]{fallback};
+        int[] result = new int[out.size()];
+        for (int i = 0; i < result.length; i++) result[i] = out.get(i);
+        return result;
     }
 
     /** Share of the tile height the icon takes in uniform_tiles mode (onCreateViewHolder). */
@@ -846,6 +936,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     /** Corner radius for a tile of this width: 16dp at the design width, proportionally less when smaller. */
     static float cornerRadius(int tileWidthPx, float density) {
+        if (roundTiles) return tileWidthPx / 2f;
         return 16f * density * Math.min(1f, tileWidthPx / (DESIGN_W_DP * density));
     }
 
@@ -901,7 +992,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 view.animate().cancel();
                 banner.animate().cancel();
                 name.animate().cancel();
-                float scale = !animations ? 1f : advancedEffects ? 1.12f : 1.10f;
+                float scale = !animations ? 1f : advancedEffects ? focusZoom : 1.10f;
                 float s = focused ? scale : 1f;
                 if (!animations) {
                     view.setScaleX(1f);
@@ -916,7 +1007,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                     // A short zoom with no hardware layer: building a layer for so short an animation costs more
                     // frames than it saves. The name just appears instead of fading.
                     view.animate().scaleX(s).scaleY(s)
-                            .translationY(focused && advancedEffects ? -4f * density : 0f)
+                            .translationY(focused && advancedEffects ? -hoverLiftDp * density : 0f)
                             .translationZ(focused && advancedEffects ? 8f * density : 0f)
                             .setDuration(focused ? Motion.REDUCED_MS : 60)
                             .setInterpolator(new DecelerateInterpolator())
@@ -928,7 +1019,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                     if (focused) name.setTranslationY(density * 4f);
                 } else {
                     view.animate().scaleX(s).scaleY(s)
-                            .translationY(focused && advancedEffects ? -4f * density : 0f)
+                            .translationY(focused && advancedEffects ? -hoverLiftDp * density : 0f)
                             .translationZ(focused && advancedEffects ? 8f * density : 0f)
                             .setDuration(advancedEffects ? (focused ? 220 : 170) : (focused ? 260 : 180))
                             .setInterpolator(focused && !overshoot ? new DecelerateInterpolator(1.5f)

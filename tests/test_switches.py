@@ -36,6 +36,10 @@ SCREENSHOT_WANTED = {
     "tile_menu", "top_menu", "vpn_app", "wallpaper", "wallpaper_captions", "wallpaper_dim",
     "wallpaper_moods", "wallpaper_order", "wallpaper_true_color", "wifi_label_width",
     "wifi_status_color",
+    # Aura TV's config.xml switches, screenshots to come.
+    "show_date", "show_last_opened", "show_dock_band", "hero_name_sp", "tile_max_dp", "tile_side_room_dp",
+    "tile_fit_percent", "focus_zoom_percent", "hover_lift_dp", "round_tiles", "app_open_zoom", "drift_glow",
+    "darker_glow_apps", "darker_glow_percent",
 }
 
 

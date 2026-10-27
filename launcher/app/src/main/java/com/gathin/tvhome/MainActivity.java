@@ -76,6 +76,7 @@ import androidx.dynamicanimation.animation.SpringAnimation;
 import androidx.dynamicanimation.animation.SpringForce;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import android.view.animation.DecelerateInterpolator;
 
 import java.io.File;
 import java.io.IOException;
@@ -157,6 +158,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean heroDotsShown = true;
     /** The artwork's opacity behind the cinematic shelf (config.xml cinematic_art); 0 leaves it out. */
     private float heroArtAlpha = 0.5f;
+    /** Local change for this TV: "Last opened" under the shelf's name (config.xml, show_last_opened). */
+    private boolean showLastOpened = true;
+    /** Local change for this TV: apps whose background glow is darkened, and to what share of its brightness. */
+    private Set<String> darkerGlowApps = Collections.emptySet();
+    private float darkerGlowFactor = 1f;
+    /** The artwork opacity for the app now on the shelf: heroArtAlpha, or less for darker_glow_apps. */
+    private float shownArtAlpha = 0.5f;
     /** Softened artwork per app (HeroArt, about 5 KB each), made the first time its dock tile is focused. */
     private final Map<String, Bitmap> heroArtCache = new HashMap<>();
     /** The app whose artwork heroArt shows, so focusing it again only fades it back in. */
@@ -164,6 +172,38 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** The focus glow's colour while the cinematic shelf tints it, 0 for plain white glass. */
     private int glassAccent;
     private int ambientColor = -1;
+    /** Local change for this TV: the app-colour glow drifts around the whole screen (config.xml, drift_glow). */
+    private boolean driftGlow;
+    private long driftStart = -1;
+    private boolean drifting;
+    /** 30 steps a second: smooth for slow, soft lights; each step only moves GPU layers, nothing is repainted. */
+    private static final long DRIFT_STEP_MS = 33L;
+    /** The two extra lights beside ambient, each in another of the focused app's own colours. */
+    private final View[] extraGlows = new View[2];
+    private final int[] extraColors = {0, 0};
+    private ValueAnimator extraAnimator;
+    private final Runnable driftStep = new Runnable() {
+        @Override
+        public void run() {
+            if (!drifting) return;
+            double s = (SystemClock.uptimeMillis() - driftStart) / 1000.0;
+            float w = ambient.getWidth(), h = ambient.getHeight();
+            // Three lights on their own slow loops (26, 33 and 41 seconds) over the whole screen, centred a little
+            // low so they also pass behind the dock, each gently growing and shrinking as it goes.
+            double a = 2 * Math.PI * s / 26, b = 2 * Math.PI * s / 33, c = 2 * Math.PI * s / 41;
+            place(ambient, Math.sin(a) * 0.36 * w, (0.06 + Math.sin(2 * a + 0.6) * 0.30) * h, 1.75 + 0.12 * Math.sin(1.3 * a));
+            float alpha = ambient.getAlpha() * 0.85f;
+            if (extraGlows[0] != null) {
+                place(extraGlows[0], Math.sin(b + 2.1) * 0.40 * w, (0.12 + Math.cos(b + 1.2) * 0.30) * h,
+                        1.5 + 0.15 * Math.sin(1.7 * b + 1));
+                place(extraGlows[1], Math.cos(c + 4.0) * 0.38 * w, (Math.sin(1.5 * c + 2.4) * 0.32) * h,
+                        1.4 + 0.12 * Math.sin(2.1 * c + 2));
+                extraGlows[0].setAlpha(alpha);
+                extraGlows[1].setAlpha(alpha);
+            }
+            handler.postDelayed(this, DRIFT_STEP_MS);
+        }
+    };
     private ValueAnimator ambientAnimator;
     private boolean heroShown;
     private boolean animations;
@@ -421,6 +461,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         glass.setStyle(cfg.glassStyle);
         if (festive) glass.setAccent(festival.accentColor());
         ambient = findViewById(R.id.ambient);
+        driftGlow = getResources().getBoolean(R.bool.drift_glow);
         // The glow is one bitmap, so its alpha can be applied while drawing it. Otherwise every frame of
         // a fade renders it into a full-screen offscreen buffer first.
         ambient.forceHasOverlappingRendering(false);
@@ -440,6 +481,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroDotsShown = cfg.cinematicDots;
         cinematicWhiteFocus = cfg.cinematicWhiteFocus;
         heroArtAlpha = cfg.cinematicArt / 100f;
+        showLastOpened = getResources().getBoolean(R.bool.show_last_opened);
+        darkerGlowApps = new HashSet<>(Arrays.asList(getResources().getStringArray(R.array.darker_glow_apps)));
+        darkerGlowFactor = getResources().getInteger(R.integer.darker_glow_percent) / 100f;
         if (cinematic) setUpCinematicShelf(cfg.cinematicScrim);
         // dock_title false: the name above the dock (and the cinematic lines under it) never shows; the glow
         // still follows the dock.
@@ -452,6 +496,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // The clock's own white for the date and the line before it, instead of their dimmed whites.
             ((TextView) findViewById(R.id.date)).setTextColor(Color.WHITE);
             findViewById(R.id.clockDivider).setBackgroundColor(Color.WHITE);
+        }
+        if (!getResources().getBoolean(R.bool.show_date)) {
+            findViewById(R.id.date).setVisibility(View.GONE);
+            findViewById(R.id.clockDivider).setVisibility(View.GONE);
         }
         if (getResources().getBoolean(R.bool.rtl_menu_bar)) {
             // Center Hebrew greetings over the numeric time, independent of a visible AM/PM label.
@@ -563,6 +611,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             public void onChildViewDetachedFromWindow(@NonNull View v) {
             }
         });
+        DockDecoration.hideBand = !getResources().getBoolean(R.bool.show_dock_band);
         if (dockRow) grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames, cfg.dockOpacity, cfg.dockGlass, cfg.dockEvenPadding,
                 singleRow, cfg.dockBandAll));
         if (cfg.fadeRows) TopFade.attach(grid, 48 * density);
@@ -786,7 +835,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Hide the glass when focus leaves the tiles.
         getWindow().getDecorView().getViewTreeObserver().addOnGlobalFocusChangeListener((oldF, newF) -> {
             boolean onTile = newF != null && newF.getId() == R.id.card;
-            if (!onTile) hideGlass();
+            if (!onTile) {
+                hideGlass();
+                spreadDock(-1, 0);
+            }
         });
 
         packageFilter.addAction(Intent.ACTION_PACKAGE_ADDED);
@@ -908,6 +960,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onResume() {
         super.onResume();
+        startGlowDrift();
         // A festival that started or ended while Home was in the background: rebuild with or without it.
         if (festive != festival.active(LocalDate.now())) {
             recreate();
@@ -1119,6 +1172,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onPause() {
         super.onPause();
+        drifting = false;
+        handler.removeCallbacks(driftStep);
         root.removeCallbacks(showIdleClock);
         endReorder();   // Home or another app while reordering keeps the order so far
         wallpaperPlayer.stop();
@@ -1581,6 +1636,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     @Override
     public void onTileFocused(int position, View card) {
+        spreadDock(position, card.getWidth());
         lastFocused = position;
         lastFocusedKey = adapter.keyAt(position);
         // Focus restored before the first layout (cold start): the tile has no size yet, and the glass
@@ -1600,7 +1656,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         float w = card.getWidth() * scale + 2 * pad;
         float h = card.getHeight() * scale + 2 * pad;
         float x = r.exactCenterX() - w / 2f;
-        float y = r.exactCenterY() - h / 2f - (advancedEffects ? 4f * density : 0f);
+        float y = r.exactCenterY() - h / 2f - (advancedEffects ? AppAdapter.hoverLiftDp * density : 0f);
 
         ViewGroup.LayoutParams lp = glass.getLayoutParams();
         if (lp.width != (int) w || lp.height != (int) h || card.getWidth() != glassCardW) {
@@ -1682,7 +1738,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void showHero(int position, float dockTopInRoot) {
         String label = adapter.labelAt(position);
-        int color = adapter.ambientColorAt(position);
+        int[] palette = driftGlow ? adapter.paletteAt(position) : null;
+        int appColor = palette != null ? lighten(palette[0]) : adapter.ambientColorAt(position);
+        int color = palette == null && darkerGlowApps.contains(adapter.packageAt(position))
+                ? darker(appColor, darkerGlowFactor) : appColor;
+        if (palette != null) setExtraGlows(palette);
         float y = dockTopInRoot - 14 * density - 26 * density - hero.getHeight();
         boolean changed = !label.contentEquals(heroName.getText());
         if (cinematic && heroArtAlpha > 0f) showHeroArt(position);
@@ -1753,7 +1813,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      * scrimPercent of its strength (cinematic_scrim). cinematic_art 0 leaves the artwork out, 0 percent the scrim.
      */
     private void setUpCinematicShelf(int scrimPercent) {
-        heroName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 68f);
+        heroName.setTextSize(TypedValue.COMPLEX_UNIT_SP, getResources().getInteger(R.integer.hero_name_sp));
         heroName.setLetterSpacing(-0.025f);
         heroMeta.setVisibility(View.INVISIBLE);   // keeps its height, so the name does not jump when it fills in
         heroDots.setVisibility(heroDotsShown ? View.VISIBLE : View.GONE);
@@ -1795,6 +1855,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void showHeroArt(int position) {
         String key = adapter.keyAt(position);
         if (key == null) return;
+        shownArtAlpha = darkerGlowApps.contains(adapter.packageAt(position)) ? heroArtAlpha * 0.25f : heroArtAlpha;
         heroArt.animate().cancel();
         if (key.equals(heroArtKey)) {
             fadeHeroArt(420);
@@ -1814,17 +1875,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         heroArt.animate().alpha(0f).setDuration(140).withEndAction(() -> {
             heroArt.setImageBitmap(next);
-            heroArt.animate().alpha(heroArtAlpha).setDuration(420).start();
+            heroArt.animate().alpha(shownArtAlpha).setDuration(420).start();
         }).start();
     }
 
     private void fadeHeroArt(int ms) {
-        if (!animations) heroArt.setAlpha(heroArtAlpha);
-        else heroArt.animate().alpha(heroArtAlpha).setDuration(reducedMotion ? Math.min(ms, Motion.REDUCED_MS) : ms).start();
+        if (!animations) heroArt.setAlpha(shownArtAlpha);
+        else heroArt.animate().alpha(shownArtAlpha).setDuration(reducedMotion ? Math.min(ms, Motion.REDUCED_MS) : ms).start();
     }
 
     /** "Last opened yesterday, 9:40 PM", the time in white; nothing (but the same height) when it was never seen. */
     private void updateHeroMeta(int position) {
+        if (!showLastOpened) {
+            heroMeta.setVisibility(View.GONE);
+            return;
+        }
         long when = LastOpened.get(this, adapter.packageAt(position));
         if (when <= 0) {
             heroMeta.setVisibility(View.INVISIBLE);
@@ -1876,6 +1941,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      * over the screen is one texture. It is painted once in white and tinted with the app's colour,
      * so changing apps neither repaints it on the CPU (about 11 ms) nor uploads it again.
      */
+    /** The colour with its red, green and blue scaled by factor, for darker_glow_apps. */
+    private static int darker(int color, float factor) {
+        return 0xFF000000
+                | Math.round(Color.red(color) * factor) << 16
+                | Math.round(Color.green(color) * factor) << 8
+                | Math.round(Color.blue(color) * factor);
+    }
+
     private void setAmbient(int color) {
         if (color == ambientColor && ambient.getBackground() != null) return;
         ambientColor = color;
@@ -1886,7 +1959,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(bmp);
             Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            if (cinematic) {
+            if (driftGlow) {
+                // A round glow in the middle that fades out before the edges, so the view can be moved and
+                // scaled around the screen (startGlowDrift) without its edges ever showing.
+                paint.setShader(new RadialGradient(
+                        w * 0.5f, h * 0.5f, h * 0.5f,
+                        new int[]{0xB3FFFFFF, 0x4DFFFFFF, 0x00FFFFFF},
+                        new float[]{0f, 0.5f, 1f},
+                        Shader.TileMode.CLAMP));
+            } else if (cinematic) {
                 // Higher and stronger, from the corner away from the shelf's text: the app's colour floods
                 // the top of the screen over its artwork, and the scrim keeps the text side dark.
                 boolean rtl = getResources().getBoolean(R.bool.rtl_menu_bar);
@@ -1937,6 +2018,103 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         ambientAnimator.setDuration(360);
         ambientAnimator.addUpdateListener(animation -> setAmbient((int) animation.getAnimatedValue()));
         ambientAnimator.start();
+    }
+
+    /**
+     * drift_glow: the app's colours drift slowly and without stopping over the whole screen as three soft lights
+     * (driftStep). Only the views' positions and sizes change, so the GPU composites them and nothing is repainted.
+     */
+    private void startGlowDrift() {
+        if (!driftGlow || !animations || reducedMotion || drifting) return;
+        // Drawn once into a GPU layer, so moving it each step is a cheap composite, not a repaint.
+        ambient.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        if (extraGlows[0] == null) {
+            ViewGroup parent = (ViewGroup) ambient.getParent();
+            int at = parent.indexOfChild(ambient) + 1;
+            for (int i = 0; i < extraGlows.length; i++) {
+                View glow = new View(this);
+                BitmapDrawable mask = new BitmapDrawable(getResources(), glowMask());
+                mask.setGravity(Gravity.FILL);
+                glow.setBackground(mask);
+                glow.setAlpha(0f);
+                glow.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+                glow.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+                parent.addView(glow, at + i, new ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                extraGlows[i] = glow;
+                if (extraColors[i] != 0) mask.setTint(extraColors[i]);
+            }
+        }
+        if (driftStart < 0) driftStart = SystemClock.uptimeMillis();
+        drifting = true;
+        handler.post(driftStep);
+    }
+
+    private static void place(View v, double x, double y, double scale) {
+        v.setTranslationX((float) x);
+        v.setTranslationY((float) y);
+        v.setScaleX((float) scale);
+        v.setScaleY((float) scale);
+    }
+
+    /** A soft round light in white, fading out well before its edges, tinted with the app's colour per view. */
+    private Bitmap glowMask() {
+        int w = 480, h = 270;
+        Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setShader(new RadialGradient(w * 0.5f, h * 0.5f, h * 0.5f,
+                new int[]{0xB3FFFFFF, 0x4DFFFFFF, 0x00FFFFFF}, new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
+        new Canvas(bmp).drawRect(0, 0, w, h, paint);
+        return bmp;
+    }
+
+    /** A lighter, softer version of an app colour, so the lights read as a gentle wash rather than a strong cast. */
+    private static int lighten(int color) {
+        float[] hsv = new float[3];
+        Color.colorToHSV(color, hsv);
+        hsv[1] *= 0.82f;
+        hsv[2] = Math.max(hsv[2], 0.95f);
+        return Color.HSVToColor(hsv);
+    }
+
+    /** The same colour with less saturation: a second light for a logo that has only one colour. */
+    private static int paler(int color, float saturation) {
+        float[] hsv = new float[3];
+        Color.colorToHSV(color, hsv);
+        hsv[1] *= saturation;
+        return Color.HSVToColor(hsv);
+    }
+
+    /** The two extra lights take the logo's second and third colours, or paler shades of its only one. */
+    private void setExtraGlows(int[] palette) {
+        int main = lighten(palette[0]);
+        int[] target = {
+                palette.length > 1 ? lighten(palette[1]) : paler(main, 0.7f),
+                palette.length > 2 ? lighten(palette[2]) : paler(main, 0.45f)};
+        if (extraAnimator != null) extraAnimator.cancel();
+        int[] from = extraColors.clone();
+        if (from[0] == 0) {
+            extraColors[0] = target[0];
+            extraColors[1] = target[1];
+            tintExtraGlows();
+            return;
+        }
+        ArgbEvaluator mix = new ArgbEvaluator();
+        extraAnimator = ValueAnimator.ofFloat(0f, 1f);
+        extraAnimator.setDuration(700);
+        extraAnimator.addUpdateListener(an -> {
+            float f = (float) an.getAnimatedValue();
+            extraColors[0] = (int) mix.evaluate(f, from[0], target[0]);
+            extraColors[1] = (int) mix.evaluate(f, from[1], target[1]);
+            tintExtraGlows();
+        });
+        extraAnimator.start();
+    }
+
+    private void tintExtraGlows() {
+        for (int i = 0; i < extraGlows.length; i++) {
+            if (extraGlows[i] != null) extraGlows[i].getBackground().setTint(extraColors[i]);
+        }
     }
 
     private void stopAmbientAnimation() {
@@ -1991,6 +2169,25 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             hero.setAlpha(0f);
             ambient.setAlpha(0f);
             heroArt.setAlpha(0f);
+        }
+    }
+
+    /**
+     * Local change for this TV: like a Mac dock, the dock tiles on either side of the focused one slide aside by
+     * the extra width its zoom takes, so the zoomed tile never covers its neighbours. -1 puts them all back.
+     */
+    private void spreadDock(int focused, int cardWidth) {
+        if (!dockRow || adapter == null) return;
+        int dock = Math.min(adapter.dockFilled(), COLUMNS);
+        boolean inDock = focused >= 0 && focused < dock;
+        float push = inDock ? cardWidth * (adapter.focusScale() - 1f) / 2f : 0f;
+        for (int i = 0; i < dock; i++) {
+            RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(i);
+            if (vh == null) continue;
+            float tx = !inDock || i == focused ? 0f : i < focused ? -push : push;
+            if (!animations || reducedMotion) vh.itemView.setTranslationX(tx);
+            else vh.itemView.animate().translationX(tx).setDuration(220)
+                    .setInterpolator(new DecelerateInterpolator(1.5f)).start();
         }
     }
 

@@ -26,9 +26,14 @@ import java.util.Random;
 final class ClockScene {
 
     private static final long MOVE_MS = 60_000L;
-    /** The glow's colour change: 16 steps over 8 s. Animated per frame it redrew the full-screen gradient ~480 times. */
-    private static final int GLOW_STEPS = 16;
-    private static final long GLOW_STEP_MS = 500L;
+    /** Local change for this TV: the clock stays centred and only nudges this far (share of the screen) each minute. */
+    private static final float NUDGE = 0.012f;
+    /**
+     * Local change for this TV: the colours flow without pause, from one palette colour to the next in 20 s.
+     * Redrawn 10 times a second rather than every frame, which is smooth at this speed and light on the TV.
+     */
+    private static final long FLOW_STEP_MS = 100L;
+    private static final int FLOW_STEPS_PER_COLOR = 200;
     /** Deep, low-brightness glow colours; the glow is drawn at partial alpha on black. */
     private static final int[] PALETTE = {0xFF2B5CFF, 0xFF00A39A, 0xFF8A3FFC, 0xFFE0661B, 0xFFD6336C};
 
@@ -37,8 +42,10 @@ final class ClockScene {
     private final View content;
     private final View ambient;
     private final GradientDrawable glow;
-    private int colorIndex;
-    private int glowColor;
+    /** Local change for this TV: a diagonal two-colour wash under the glow. */
+    private final GradientDrawable wash;
+    private final ArgbEvaluator mix = new ArgbEvaluator();
+    private int flowStep;
     /** clock_wallpaper or clock_glow false: something else (a picture, or plain black) replaced the coloured glow. */
     private boolean wallpaperShown;
     /** clock_wallpaper: the picture start() decodes, its darkening, and the resources to draw it with. */
@@ -52,8 +59,17 @@ final class ClockScene {
         @Override
         public void run() {
             moveClock();
-            shiftGlow();
             handler.postDelayed(this, MOVE_MS);
+        }
+    };
+
+    private final Runnable flow = new Runnable() {
+        @Override
+        public void run() {
+            if (wallpaperShown) return;
+            flowStep = (flowStep + 1) % (FLOW_STEPS_PER_COLOR * PALETTE.length);
+            applyFlow();
+            handler.postDelayed(this, FLOW_STEP_MS);
         }
     };
 
@@ -63,11 +79,12 @@ final class ClockScene {
         ambient = root.findViewById(R.id.dreamAmbient);
         glow = new GradientDrawable();
         glow.setGradientType(GradientDrawable.RADIAL_GRADIENT);
-        ambient.setBackground(glow);
+        wash = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0, 0, 0});
+        ambient.setBackground(new LayerDrawable(new Drawable[]{wash, glow}));
         ambient.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) ->
-                glow.setGradientRadius((r - l) * 0.55f));
-        colorIndex = random.nextInt(PALETTE.length);
-        setGlow(PALETTE[colorIndex]);
+                glow.setGradientRadius((r - l) * 0.45f));
+        flowStep = random.nextInt(PALETTE.length) * FLOW_STEPS_PER_COLOR;
+        applyFlow();
     }
 
     void start() {
@@ -78,6 +95,8 @@ final class ClockScene {
         });
         handler.removeCallbacks(tick);
         handler.postDelayed(tick, MOVE_MS);
+        handler.removeCallbacks(flow);
+        handler.postDelayed(flow, FLOW_STEP_MS);
         if (wallpaperFile != null && !wallpaperShown) loadWallpaper();
     }
 
@@ -167,13 +186,13 @@ final class ClockScene {
         }).start();
     }
 
-    /** A random spot that keeps the whole clock on screen, with the glow centred behind it. */
+    /** The centre of the screen, nudged a little each minute so nothing burns in, with the glow centred behind it. */
     private void placeClock() {
         View parent = (View) content.getParent();
         int maxX = Math.max(0, parent.getWidth() - content.getWidth());
         int maxY = Math.max(0, parent.getHeight() - content.getHeight());
-        float x = maxX * (0.1f + 0.8f * random.nextFloat());
-        float y = maxY * (0.1f + 0.8f * random.nextFloat());
+        float x = maxX / 2f + parent.getWidth() * NUDGE * (2f * random.nextFloat() - 1f);
+        float y = maxY / 2f + parent.getHeight() * NUDGE * (2f * random.nextFloat() - 1f);
         content.setX(x);
         content.setY(y);
         if (parent.getWidth() > 0 && parent.getHeight() > 0) {
@@ -182,21 +201,18 @@ final class ClockScene {
         }
     }
 
-    private void shiftGlow() {
-        if (wallpaperShown) return;
-        int from = glowColor;
-        colorIndex = (colorIndex + 1) % PALETTE.length;
-        int to = PALETTE[colorIndex];
-        ArgbEvaluator mix = new ArgbEvaluator();
-        for (int i = 1; i <= GLOW_STEPS; i++) {
-            float f = (float) i / GLOW_STEPS;
-            handler.postDelayed(() -> setGlow((int) mix.evaluate(f, from, to)), i * GLOW_STEP_MS);
-        }
+    /** The glow and the wash at flowStep: each part of the way from one palette colour to the next. */
+    private void applyFlow() {
+        int n = PALETTE.length;
+        int i = flowStep / FLOW_STEPS_PER_COLOR;
+        float f = (flowStep % FLOW_STEPS_PER_COLOR) / (float) FLOW_STEPS_PER_COLOR;
+        setGlow((int) mix.evaluate(f, PALETTE[i], PALETTE[(i + 1) % n]),
+                (int) mix.evaluate(f, PALETTE[(i + 2) % n], PALETTE[(i + 3) % n]));
     }
 
-    private void setGlow(int color) {
-        glowColor = color;
-        int c = color & 0x00FFFFFF;
-        glow.setColors(new int[]{0x40000000 | c, 0x14000000 | c, 0x00000000 | c});
+    private void setGlow(int color, int second) {
+        int c = color & 0x00FFFFFF, s = second & 0x00FFFFFF;
+        glow.setColors(new int[]{0x4D000000 | c, 0x1A000000 | c, 0x00000000 | c});
+        wash.setColors(new int[]{0x59000000 | c, 0x0D000000 | c, 0x4D000000 | s});
     }
 }

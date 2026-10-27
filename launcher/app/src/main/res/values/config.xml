@@ -17,10 +17,10 @@
 
     <!-- Apps pinned to the dock row at the bottom, in this order. Missing apps are skipped. -->
     <string-array name="dock_apps">
+        <item>com.google.android.youtube.tv</item>
         <item>com.netflix.ninja</item>
         <item>com.amazon.amazonvideo.livingroom</item>
-        <item>com.google.android.youtube.tv</item>
-        <item>in.startv.hotstar</item>
+        <item>com.android.vending</item>
     </string-array>
     <!-- With fewer dock_apps than columns (or a dock app that is not installed), the free dock slots take
          the first grid apps, so the dock never shows a gap. false leaves them empty (#162); a theme can
@@ -29,12 +29,11 @@
 
     <!-- Apps never shown as tiles (e.g. the Live TV app, which the Inputs menu already covers). -->
     <string-array name="hidden_apps">
-        <item>com.mediatek.wwtv.tvcenter</item>
-        <item>com.mitv.gallery</item>
+        <item>org.liskovsoft.androidtv.rukeyboard</item>
     </string-array>
 
     <!-- The TV's Live TV / tuner app, offered at the end of the Inputs menu. Leave empty to omit. -->
-    <string name="live_tv_package" translatable="false">com.mediatek.wwtv.tvcenter</string>
+    <string name="live_tv_package" translatable="false">com.realtek.tv.atv</string>
 
     <!-- Open the Live TV app above the first time Home comes up after the TV is switched on, for sets that are
          mostly used for broadcast TV. Once per boot: Home after that stays Home. Can also be set with
@@ -202,9 +201,39 @@
     <bool name="shamsi_date">false</bool>
     <!-- Lunisolar (Vietnamese / Chinese) date under the date; config.json lunar_date, lunar_utc_offset (7 or 8, default by locale). -->
     <bool name="lunar_date">false</bool>
+    <!-- The date beside the clock on Home, and the line before it (local change for this TV). -->
+    <bool name="show_date">false</bool>
+    <!-- "Last opened" under the focused app's name on the cinematic shelf (local change for this TV). -->
+    <bool name="show_last_opened">false</bool>
+    <!-- Apps whose background glow is darkened to darker_glow_percent of its brightness (local change). -->
+    <string-array name="darker_glow_apps" translatable="false">
+        <item>com.google.android.youtube.tv</item>
+    </string-array>
+    <integer name="darker_glow_percent">45</integer>
+    <!-- Every tile a circle, its diameter the tile's height (local change for this TV). -->
+    <bool name="round_tiles">false</bool>
+    <!-- Tile size and the gap between tiles (local change for this TV). Tiles grow to fit their column, up to
+         tile_max_dp, after setting aside tile_side_room_dp and room for a zoom of tile_fit_percent. The original
+         180, 12 and 110 gave a wider gap; 200, 4 and 108 make the tiles larger and the gap smaller. -->
+    <integer name="tile_max_dp">200</integer>
+    <integer name="tile_side_room_dp">4</integer>
+    <integer name="tile_fit_percent">108</integer>
+    <!-- Size of the focused app's name above the dock on the cinematic shelf, in sp (local change; was 68). -->
+    <integer name="hero_name_sp">46</integer>
+    <!-- The band and border behind the dock (local change for this TV); false shows only the apps. -->
+    <bool name="show_dock_band">false</bool>
+    <!-- The focused tile's zoom in percent and how far it rises, in dp, like a Mac dock (local change; the
+         original is 112 and 4). -->
+    <integer name="focus_zoom_percent">124</integer>
+    <integer name="hover_lift_dp">12</integer>
+    <!-- The focused app's colour glow drifts slowly around the whole screen instead of sitting in the top-right
+         corner (local change for this TV). -->
+    <bool name="drift_glow">true</bool>
+    <!-- Opening an app zooms it out of its tile to full screen (local change for this TV). -->
+    <bool name="app_open_zoom">true</bool>
 
     <!-- A name after the greeting: "Mr. Trịnh" shows GOOD MORNING, MR. TRỊNH. Empty: the greeting alone. -->
-    <string name="greeting_name" translatable="false"></string>
+    <string name="greeting_name" translatable="false">Basit</string>
     <!-- The greeting above the clock ("Good evening"). false hides it. Can also be set with "show_greeting" in a theme. -->
     <bool name="show_greeting">true</bool>
     <!-- The date and the line between the clock and the date in the clock's full white instead of dimmed. Can also be

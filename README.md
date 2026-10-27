@@ -1,3 +1,33 @@
+# Aura TV
+
+**An Apple TV-style home screen for Android TV, by Abdul Basit.** Built and tuned on a Sony BRAVIA (Android TV 11).
+
+| | |
+|---|---|
+| ![YouTube in focus: its own red drifting behind the dock](docs/aura-tv/home-youtube.jpg) | ![Play Store in focus: the blue, green and yellow of its logo](docs/aura-tv/home-playstore.jpg) |
+| ![The app library under the dock](docs/aura-tv/app-library.jpg) | ![The clock screensaver on a flowing gradient](docs/aura-tv/screensaver.jpg) |
+
+**What Aura TV adds:**
+
+- **App-colour lights:** three soft lights in the focused app's own logo colours drift slowly over the whole
+  screen and blend to the next app's colours as you move (`drift_glow`).
+- **A Mac-style dock:** no band or border, the focused app zooms and lifts, and its neighbours slide aside so
+  nothing is covered (`show_dock_band`, `focus_zoom_percent`, `hover_lift_dp`).
+- **Tighter, bigger tiles** with smaller gaps (`tile_max_dp`, `tile_side_room_dp`, `tile_fit_percent`).
+- **Apps open by zooming out of their tile** (`app_open_zoom`).
+- **A cleaner header:** the Urbanist font, a larger clock in the greeting's style, no date
+  (`show_date`) and no "Last opened" line (`show_last_opened`).
+- **A centred clock screensaver** on a two-colour gradient that flows without pause, time only.
+- **The `aura` theme** in [`themes/aura/`](themes/aura/) puts the whole look together:
+  `TV_HOST=<tv ip> tools/theme.sh themes/aura`.
+
+Everything else in this repo, below, is the setup and debloat guide it is built on.
+
+<sub>Built on [cleanyourtv](https://github.com/Gathin23/cleanyourtv) (MIT). Urbanist font under the SIL Open Font
+Licence (`launcher/URBANIST-LICENSE-OFL.txt`).</sub>
+
+---
+
 <p align="center">
   <a href="https://cleanyour.tv"><img src="https://raw.githubusercontent.com/Gathin23/cleanyourtv/main/docs/banner.png" alt="CleanYourTV. Your TV, minus the ads. Strip the bloatware from any Android TV or Google TV over Wi-Fi and replace the ad-filled home screen with a clean launcher that looks like an Apple TV. No root, no cable, nothing uninstalled, and a one-line restore." width="800"></a>
 </p>
@@ -539,7 +569,7 @@ The **TV** needs Android 8.0 (API 26) or newer: `minSdk` is a compile-time floor
 |---|---|
 | **Configure** | Dock order, hidden apps, Live TV app, 4 to 7 tiles per row, reduced motion. All in [`config.xml`](launcher/app/src/main/res/values/config.xml) |
 | **Settings on the TV** | Hold OK on Settings for launcher settings. Optional `launcher_settings_button` makes a normal click open them directly; TV settings remain on the settings page and their app tile. |
-| **Themes** | Background, wallpaper and layout from a `config.json` pushed over Wi-Fi, no rebuild. eight ship in [`themes/`](themes/), the built-in `default/` included |
+| **Themes** | Background, wallpaper and layout from a `config.json` pushed over Wi-Fi, no rebuild. nine ship in [`themes/`](themes/), the built-in `default/` included |
 | **25 languages** | Follows the TV's language, with a fully mirrored right-to-left layout for Hebrew |
 | **App library** | Optional: browse every installed app and add or remove Home shortcuts. See [the app library guide](docs/app-library.md) |
 | **Tile menu** | Optional (`tile_menu`): hold OK on a tile for Move, Remove from Home and App info. Off, holding OK opens App info |

@@ -22,6 +22,7 @@ pushes it with `theme.sh`.
 | `aurora/` | A dark aurora wallpaper (teal and violet on navy, darker at the bottom) with a matching background colour | <img src="aurora/screenshot.jpg" width="320" alt="aurora theme"> |
 | `dussehra/` | Festive skin for Dussehra (ends 21 Oct 2026): a marigold toran, a faint gold rangoli, a diya for Wi-Fi, a bell for Inputs, a marigold for Settings and a petal shower | <img src="dussehra/screenshot.jpg" width="320" alt="dussehra theme"> |
 | `glass/` | Dark navy wallpaper with soft teal and violet light, the cinematic top shelf, a frosted-glass dock, icon-only buttons and the focus glow in the app's colour, gliding without overshoot | <img src="glass/screenshot.jpg" width="320" alt="glass theme"> |
+| `aura/` | Aura TV's look: near-black with the focused app's own colours drifting as soft lights, a Mac-style dock with no band (the focused app zooms and lifts, its neighbours slide aside), icon tiles, a gear menu, the app library and a five-app dock. Pairs with this repo's `config.xml` changes | <img src="aura/screenshot.jpg" width="320" alt="aura theme"> |
 | `ruska/` | A Finnish autumn ("ruska") dusk over a lake: spruce shoreline, birches in autumn colour, a few falling leaves, drawn in code by `make_wallpaper.py`. The app-colour glow stays off the picture so the autumn colours keep their own light; the dock is 70% opaque so the lake shows through, and the focus glows in the app's colour without overshoot | <img src="ruska/screenshot.jpg" width="320" alt="ruska theme"> |
 | `scenes/` | 14 dark illustrated landscapes in `wallpapers/`, a new one every hour; drawn from code by `tools/scenes_wallpapers.py` | <img src="scenes/screenshot.jpg" width="320" alt="scenes theme"> |
 | `six-columns/` | Six smaller tiles per row and one grid row visible under the dock | <img src="six-columns/screenshot.jpg" width="320" alt="six-columns theme"> |
@@ -136,6 +137,20 @@ A new key needs one there in the same pull request.
 | `ambient_glow` | bool | The glow behind the dock in the focused app's colour (`true` by default); `false` keeps only `background_color` or the wallpaper, e.g. for a calm photo background |
 | `app_glow` | bool | The focus highlight glows in the focused app's colour on every tile, as `cinematic_home` does for the dock (`false` by default) |
 | `fade_rows` | bool | The rows fade out as they scroll up under the clock instead of being cut off at a hard line; the wallpaper or sky shows through. The grid then draws into a hardware layer (about 6 MB of graphics memory at 1080p) (`false` by default) |
+| `show_date` | bool, `config.xml` only | The date beside the clock on Home and the line before it (`true` by default); `false` shows the greeting and the clock alone. Not read from a theme |
+| `show_last_opened` | bool, `config.xml` only | With `cinematic_home`, "Last opened" under the focused app's name (`true` by default); `false` leaves the name and the dots alone. Not read from a theme |
+| `show_dock_band` | bool, `config.xml` only | The band and border behind the dock (`true` by default); `false` shows only the apps. Not read from a theme |
+| `hero_name_sp` | 1 to 200, `config.xml` only | Size of the focused app's name above the dock on the cinematic shelf, in sp (`68` by default). Not read from a theme |
+| `tile_max_dp` | dp, `config.xml` only | Widest a tile grows to fill its column (`180` by default) |
+| `tile_side_room_dp` | dp, `config.xml` only | Room set aside beside each tile before it is sized, which with `tile_fit_percent` sets the gap between tiles (`12` by default). Not read from a theme |
+| `tile_fit_percent` | percent, `config.xml` only | The zoom a tile must leave room for when its size is worked out (`110` by default); lower lets tiles grow closer together. Not read from a theme |
+| `focus_zoom_percent` | percent, `config.xml` only | How much the focused tile zooms with `advanced_effects` (`112` by default). Not read from a theme |
+| `hover_lift_dp` | dp, `config.xml` only | How far the focused tile rises with `advanced_effects`, and the dock tiles beside it slide aside so the zoom never covers them (`4` by default). Not read from a theme |
+| `round_tiles` | bool, `config.xml` only | Every tile a circle, its diameter the tile's height (`false` by default). Not read from a theme |
+| `app_open_zoom` | bool, `config.xml` only | Opening an app zooms it out of its tile to full screen (`false` by default; needs `animations`). Not read from a theme |
+| `drift_glow` | bool, `config.xml` only | The focused app's colours drift slowly over the whole screen as three soft lights, sampled from its logo or banner and lightened, instead of the fixed glow (`false` by default; needs `animations`). Not read from a theme |
+| `darker_glow_apps` | list, `config.xml` only | Apps whose background glow is darkened to `darker_glow_percent` of its brightness, when `drift_glow` is off. Not read from a theme |
+| `darker_glow_percent` | percent, `config.xml` only | How bright the glow of `darker_glow_apps` stays (`100` by default). Not read from a theme |
 
 ## Wallpapers
 

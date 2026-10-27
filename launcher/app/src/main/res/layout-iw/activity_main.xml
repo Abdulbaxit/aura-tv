@@ -227,7 +227,7 @@
                             android:ellipsize="end"
                             android:textColor="#80FFFFFF"
                             android:textSize="14sp"
-                            android:fontFamily="@font/outfit_regular"
+                            android:fontFamily="@string/font_regular"
                             android:letterSpacing="0.14"
                             android:textAllCaps="true"
                             android:visibility="gone" />
