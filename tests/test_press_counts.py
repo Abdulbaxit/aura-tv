@@ -1,9 +1,10 @@
-"""Keeps the press numbers in docs/PRESS.md, the README card and the card source in step.
+"""Keeps the press numbers in docs/PRESS.md and the card source in step.
 
-The article total is written in four places: the PRESS.md intro, its per-country index line,
-the README alt text and tools/readme_featured.py (which draws the line onto docs/featured.png).
-Adding one article by hand means editing all four; this checks they agree, so a PR that adds a
-row and forgets the counts fails here instead of shipping a card that says 73 over a list of 74.
+The article total is written in three places: the PRESS.md intro, its per-country index line
+and tools/readme_featured.py (which draws the line onto docs/featured.png). Aura TV's README no
+longer shows the card. Adding one article by hand means editing all three; this checks they
+agree, so a PR that adds a row and forgets the counts fails here instead of shipping a card that
+says 73 over a list of 74.
 
 Run from the repository root: python3 -m unittest discover -s tests -v
 """
@@ -14,7 +15,6 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 PRESS = ROOT / "docs" / "PRESS.md"
-README = ROOT / "README.md"
 FEATURED = ROOT / "tools" / "readme_featured.py"
 
 LATAM = "Latin America (Spanish-language)"
@@ -98,14 +98,6 @@ class PressCountsTest(unittest.TestCase):
             self.assertEqual(self.counts[ONLINE], self.numbers["online"])
         with self.subTest(part="sum"):
             self.assertEqual(country_rows + self.counts[LATAM] + self.counts[ONLINE], self.numbers["total"])
-
-    def test_readme_alt_text_matches_the_list(self):
-        alt = re.search(r'and (\d+) more: (\d+) articles from (\d+) countries', README.read_text(encoding="utf-8"))
-        self.assertIsNotNone(alt, "the README card alt text no longer states 'and N more: N articles from N countries'")
-        more, articles, countries = (int(g) for g in alt.groups())
-        self.assertEqual(articles, self.numbers["total"], "README alt text and docs/PRESS.md disagree on the article count")
-        self.assertEqual(countries, self.numbers["countries"], "README alt text and docs/PRESS.md disagree on the country count")
-        self.assertEqual(more, self.numbers["total"] - len(logos()), "README alt text and the logos in tools/readme_featured.py disagree on the '+N more'")
 
     def test_the_card_source_draws_the_same_numbers(self):
         more = re.search(r'^MORE = "(.*)"$', FEATURED.read_text(encoding="utf-8"), re.M)

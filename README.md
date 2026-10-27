@@ -22,48 +22,12 @@
   `TV_HOST=<tv ip> tools/theme.sh themes/aura`.
 
 Everything else in this repo, below, is the setup and debloat guide it is built on.
+The guide is also in [简体中文](README.zh-CN.md), [Tiếng Việt](README.vi.md) and [日本語](README.ja.md).
 
 <sub>Built on [cleanyourtv](https://github.com/Gathin23/cleanyourtv) (MIT). Urbanist font under the SIL Open Font
 Licence (`launcher/URBANIST-LICENSE-OFL.txt`).</sub>
 
 ---
-
-<p align="center">
-  <a href="https://cleanyour.tv"><img src="https://raw.githubusercontent.com/Gathin23/cleanyourtv/main/docs/banner.png" alt="CleanYourTV. Your TV, minus the ads. Strip the bloatware from any Android TV or Google TV over Wi-Fi and replace the ad-filled home screen with a clean launcher that looks like an Apple TV. No root, no cable, nothing uninstalled, and a one-line restore." width="800"></a>
-</p>
-
-<p align="center">
-  <a href="https://github.com/Gathin23/cleanyourtv/stargazers"><img src="https://img.shields.io/github/stars/Gathin23/cleanyourtv?style=flat&cacheSeconds=1800&color=cfffcf&labelColor=15181e" alt="Stars"></a>
-  <a href="https://github.com/Gathin23/cleanyourtv/pulls?q=is%3Amerged"><img src="https://img.shields.io/github/issues-search?query=repo%3AGathin23%2Fcleanyourtv%20is%3Apr%20is%3Amerged&style=flat&cacheSeconds=1800&label=merged%20PRs&color=cfffcf&labelColor=15181e" alt="Merged PRs"></a>
-  <a href="https://github.com/Gathin23/cleanyourtv/network/members"><img src="https://img.shields.io/github/forks/Gathin23/cleanyourtv?style=flat&cacheSeconds=1800&color=cfffcf&labelColor=15181e" alt="Forks"></a>
-  <a href="https://github.com/Gathin23/cleanyourtv/graphs/contributors"><img src="https://img.shields.io/github/contributors/Gathin23/cleanyourtv?style=flat&cacheSeconds=1800&color=cfffcf&labelColor=15181e" alt="Contributors"></a>
-  <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/README-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-cfffcf?style=flat&labelColor=15181e" alt="简体中文"></a>
-  <a href="README.vi.md"><img src="https://img.shields.io/badge/README-Ti%E1%BA%BFng%20Vi%E1%BB%87t-cfffcf?style=flat&labelColor=15181e" alt="Tiếng Việt"></a>
-  <a href="README.ja.md"><img src="https://img.shields.io/badge/README-%E6%97%A5%E6%9C%AC%E8%AA%9E-cfffcf?style=flat&labelColor=15181e" alt="日本語"></a>
-  <a href="https://buymeacoffee.com/gathint"><img src="https://img.shields.io/badge/support-%E2%9D%A4-ff5e8a?style=flat&labelColor=15181e" alt="Support, buy me a coffee"></a>
-  <a href="https://www.producthunt.com/products/cleanyourtv"><img src="https://img.shields.io/badge/Product%20Hunt-upvote%20%E2%96%B2-da552f?style=flat&logo=producthunt&logoColor=white&labelColor=15181e" alt="CleanYourTV on Product Hunt"></a>
-</p>
-
-<p align="center">
-  <a href="https://trendshift.io/repositories/310225"><img src="docs/trending-badge.png" alt="#1 trending repo of the week, via trendshift.io" width="360"></a>
-</p>
-
-<p align="center">
-  <a href="docs/PRESS.md"><img src="docs/card.jpg" alt="280 TV models · 81 brands · 25 languages · 500 KB launcher. Featured in TechCrunch, TechRadar, Tom's Guide, Mashable, Android Authority, XDA, FlatpanelsHD, It's FOSS, Phandroid, GIGAZINE, Xataka, WinFuture, Frandroid, Macitynet, Techaeris, TechPP and 180 more: 196 articles from 32 countries. Before: stock Google TV home with a sponsored ad. After: the Clean Your TV launcher." width="800"></a>
-</p>
-
-**The viral tweet:** [x.com/gathint/status/2111379569030939102](https://x.com/gathint/status/2111379569030939102)
-
-On 17 October 2026 I posted a before and after of my parents' TV, cleaned up by Claude Code over Wi-Fi.
-It reached 7.4M views, people started doing the same to their own TVs, and their replies turned into
-the lists here: 170+ TV models from 200+ contributors in four days. The repo was called tv-vibehack
-until the 19th; old links work.
-
-**Themes, switches and add-ons:** [cleanyour.tv/addons](https://cleanyour.tv/addons)
-
-**Official links:** the website is [cleanyour.tv](https://cleanyour.tv) and the code, launcher and
-tools live only in this repo. Other domains using the name, such as cleanyourtv.com, are not run by
-this project ([#1004](https://github.com/Gathin23/cleanyourtv/issues/1004)).
 
 ## How it works
 
@@ -902,17 +866,6 @@ Contributing through a coding agent? [AGENTS.md](AGENTS.md) gives it the same ru
 | **Launcher and prompt** | Launcher improvements and sharper prompt wording are welcome too. |
 | **Built something on top?** | A launcher, a port, a theme: add it to [SHOWCASE.md](SHOWCASE.md), where ninety-five projects already live, sorted into home screens, forks, add-ons, tools and other platforms, with an index by TV brand. |
 
-The people whose work is in this repo:
-
-<a href="https://github.com/Gathin23/cleanyourtv/graphs/contributors"><img src="https://contrib.rocks/image?repo=Gathin23/cleanyourtv&columns=16&max=400" alt="Contributors"></a>
-
-<details>
-<summary><strong>Star history</strong></summary>
-
-<a href="https://star-history.com/#Gathin23/cleanyourtv&Date"><img src="https://api.star-history.com/svg?repos=Gathin23/cleanyourtv&type=Date" alt="Star history chart" width="640"></a>
-
-</details>
-
 ## Contact
 
 | For | Where |
@@ -936,5 +889,5 @@ The people whose work is in this repo:
 
 ## Licence
 
-MIT, see [`LICENSE`](LICENSE). The Outfit typeface is under the SIL Open Font License, see
-`launcher/FONT-LICENSE-OFL.txt`.
+MIT, see [`LICENSE`](LICENSE). The Urbanist typeface is under the SIL Open Font License, see
+`launcher/URBANIST-LICENSE-OFL.txt`.
